@@ -301,6 +301,7 @@ class Task:
         self.head = head
         self.image = image
         self.inventory = "/usr/share/ansible/inventory/standard-inventory-qcow2"
+        self.promote_warning = False
 
         self.id_ = f"pull-{owner}_{repo}-{pull}-{self.head[:7]}-" + image["name"]
 
@@ -420,6 +421,12 @@ class Task:
 
                     print("FAILURE")
                     return False
+                elif self.promote_warning:
+                    with open(ansible_log, "r") as ansible_file:
+                        for line in ansible_file:
+                            if "[WARNING]:" in line:
+                                print("FAILURE: WARNING promoted.")
+                                return False
 
                 print("SUCCESS")
             return True
@@ -699,6 +706,7 @@ def handle_task(gh, args, config, task, dry_run=False):
             print()
             try:
                 task.inventory = args.inventory
+                task.promote_warning = args.promote_warning
                 result = task.run(
                     f"{artifactsdir}", args.cache, inventory=args.inventory
                 )
@@ -858,6 +866,13 @@ def main():
     parser.add_argument(
         "--dry-run",
         help="Do not update pull request status or upload artifacts",
+        default=False,
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--promote-warning",
+        help="Treat warning as a failure",
         default=False,
         action="store_true",
     )
